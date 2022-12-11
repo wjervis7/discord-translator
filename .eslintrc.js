@@ -7,5 +7,10 @@ module.exports = {
     extends: ["plugin:@typescript-eslint/recommended"],
     env: {
         node: true
-    }
+    },
+    rules: {
+        "@typescript-eslint/no-non-null-assertion": "off"
+    },
+    // Don't lint built files
+    ignorePatterns: ["dist/**"]
 };
