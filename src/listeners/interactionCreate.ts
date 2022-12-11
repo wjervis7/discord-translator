@@ -1,5 +1,6 @@
 import { CommandInteraction, Client, Interaction } from "discord.js";
 import { Commands } from "../Commands";
+import { getErrorMessage } from "../utilities";
 
 export default (client: Client): void => {
     client.on("interactionCreate", async(interaction: Interaction) => {
@@ -21,7 +22,8 @@ const handleSlashCommand = async (client: Client, interaction: CommandInteractio
 
     try {
         await slashCommand.run(client, interaction);
-    } catch (e: any) {
-        await interaction.followUp({ ephemeral: slashCommand.ephemeral, content: e.message || e});
+    } catch (e: unknown) {
+        const message = getErrorMessage(e);
+        await interaction.followUp({ ephemeral: slashCommand.ephemeral, content: message});
     }
 };

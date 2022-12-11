@@ -1,8 +1,9 @@
 import { Client, MessageReaction, PartialMessageReaction } from "discord.js";
-const emojiFlags = require("emoji-flags");
+const emojiFlags = require("emoji-flags"); // eslint-disable-line @typescript-eslint/no-var-requires
 import clm from "country-locale-map";
 import translator from "../Language/translator";
 import { getISOCode, getLanguageFromISOCode } from "../Language/language";
+import { getErrorMessage } from "../utilities";
 
 interface IEmoji {
     code: string,
@@ -15,7 +16,7 @@ interface IEmoji {
 const timeouts: {[key: string]: NodeJS.Timeout} = {};
 
 export default (client: Client): void => {
-    client.on("messageReactionAdd", async (reaction: MessageReaction | PartialMessageReaction, _) => {
+    client.on("messageReactionAdd", async (reaction: MessageReaction | PartialMessageReaction) => {
         const messageId = reaction.message.id;
         if (messageId in timeouts) {
             if (reaction.emoji.identifier === "%F0%9F%94%92") {
@@ -51,8 +52,9 @@ This message will automatically delete in 60s. To prevent this, react to this me
                 await reaction.remove();
                 delete timeouts[reply.id];
             }, 60000);
-        } catch (e: any) {
-            await reaction.message.reply(e.message);
+        } catch (e: unknown) {
+            const message = getErrorMessage(e);
+            await reaction.message.reply(message);
         }
     });
 };

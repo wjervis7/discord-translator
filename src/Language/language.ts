@@ -1,5 +1,3 @@
-import translator from "./translator";
-
 /**
  * Generated from https://translate.google.com
  *
