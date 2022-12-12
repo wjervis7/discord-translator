@@ -1,4 +1,4 @@
-import { Client, MessageReaction, PartialMessageReaction } from "discord.js";
+import { Client, Message, MessageReaction, PartialMessageReaction } from "discord.js";
 const emojiFlags = require("emoji-flags"); // eslint-disable-line @typescript-eslint/no-var-requires
 import clm from "country-locale-map";
 import translator from "../Language/translator";
@@ -31,30 +31,56 @@ export default (client: Client): void => {
 
         const flagCountry = emojiFlags.data.filter((e: IEmoji) => e.emoji === decodeURIComponent(reaction.emoji.identifier));
         if(!flagCountry.length){
-            await reaction.message.reply("Unable to find country for flag; cannot perform translation.");
             return;
         }
 
-        try {
-            const country = clm.getCountryByAlpha2(flagCountry[0].code);
-            const languageCode = getISOCode(country?.languages[0] || "") || "";
-            const language = getLanguageFromISOCode(languageCode);
-            const messageContent = reaction.message.content || "";
-    
-            const translatedMessage = await translator(messageContent, languageCode);
+        if (reaction.partial) {
+            // If the message this reaction belongs to was removed, the fetching might result in an API error which should be handled
+            try {
+                await reaction.fetch();
+            } catch (error) {
+                console.error('Something went wrong when fetching the message:', error);
+                // Return as `reaction.message.author` may be undefined/null
+                return;
+            }
+        }
 
-            const reply = await reaction.message.reply(`Translated message to ${language}:
-> ${translatedMessage.split(/\r?\n/).join("\n > ")}
-This message will automatically delete in 60s. To prevent this, react to this message with :lock:`);
+        try {
+            const reply = await translateMessage(reaction, flagCountry[0].code);
 
             timeouts[reply.id] = setTimeout(async () => {
                 await reply.delete();
                 await reaction.remove();
                 delete timeouts[reply.id];
             }, 60000);
+
         } catch (e: unknown) {
             const message = getErrorMessage(e);
-            await reaction.message.reply(message);
+            console.error(message);
+            return;
         }
     });
+};
+
+const translateMessage = async (reaction: MessageReaction | PartialMessageReaction, countryCode: string): Promise<Message> => {
+    const country = clm.getCountryByAlpha2(countryCode);
+    const languageCode = getISOCode(country?.languages[0] || "") || "";
+    const language = getLanguageFromISOCode(languageCode);
+    const messageContent = reaction.message.content || "";
+
+    const {from: {language: {iso: from}}, text} = await translator(messageContent, languageCode);
+
+    const fromLanguage = getLanguageFromISOCode(from);
+
+    let headerText = `Translated message from ${fromLanguage}, to ${language}:`;
+    let footerText = "This message will automatically delete in 60s. To prevent this, react to this message with";
+
+    headerText = (await translator(headerText, languageCode)).text;
+    footerText = `${(await translator(footerText, languageCode)).text} :lock:`;
+
+    const reply = await reaction.message.channel.send(`${headerText}
+> ${text.split(/\r?\n/).join("\n > ")}
+${footerText}`);
+
+    return reply;
 };
