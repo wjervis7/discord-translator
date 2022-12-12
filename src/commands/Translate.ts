@@ -31,7 +31,7 @@ export const Translate: ICommand = {
         const text = interaction.options.get("text", true).value!.toString();
         const to = interaction.options.get("to", true).value!.toString();
         const from = interaction.options.get("from", false)?.value?.toString();
-        const result = await translator(text, to, from);
+        const {text: result} = await translator(text, to, from);
         interaction.followUp({content: result});
     }
 }
